@@ -1,7 +1,7 @@
 <?php
 include 'db_config.php';
 
-header('Content-Type: application/json'); // Bilang ke browser ini adalah JSON
+header('Content-Type: application/json');
 
 $sql = "SELECT * FROM status_robot WHERE id = 1";
 $result = $conn->query($sql);
@@ -15,4 +15,5 @@ if ($result->num_rows > 0) {
 }
 
 $conn->close();
+
 ?>
