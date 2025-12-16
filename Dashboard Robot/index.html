@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Robot Pemadam Api</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px; /* Diperlebar sedikit untuk 3 kolom */
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .dashboard {
+            display: grid;
+            /* Diubah untuk 3 kolom yang responsif */
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transition: transform 0.3s ease;
+            display: flex; /* Untuk layout yang konsisten */
+            flex-direction: column;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 8px;
+        }
+
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .status-item:last-child {
+            border-bottom: none;
+        }
+
+        .status-label {
+            font-weight: 600;
+            color: #555;
+        }
+
+        .status-value {
+            font-weight: bold;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            min-width: 80px; /* Lebar minimum untuk badge */
+            text-align: center;
+        }
+
+        /* Kelas Status untuk Mode */
+        .status-siaga { background: #4CAF50; color: white; }
+        .status-mencari { background: #2196F3; color: white; }
+        .status-padamkan { background: #f44336; color: white; }
+        
+        /* Kelas Status untuk ON/OFF */
+        .status-on { background: #FF9800; color: white; }
+        .status-off { background: #9E9E9E; color: white; }
+        .status-netral { background: #e0e0e0; color: #333; }
+
+        .sensor-visual {
+            text-align: center;
+            padding: 20px;
+            flex-grow: 1; /* Agar card ini mengisi ruang */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .robot-arm {
+            width: 200px;
+            height: 200px;
+            margin: 0 auto 20px;
+            background: #f5f5f5;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 5px solid #ddd;
+            position: relative;
+        }
+
+        .direction-indicator {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background: #ff4444;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 0.8rem;
+            box-shadow: 0 4px 15px rgba(255,68,68,0.4);
+            animation: pulse 1.5s infinite; /* <-- Perbaikan Animasi */
+        }
+
+        .direction-tengah { top: 20px; left: 50%; transform: translateX(-50%); }
+        .direction-kiri { top: 50%; left: 20px; transform: translateY(-50%); }
+        .direction-kanan { top: 50%; right: 20px; transform: translateY(-50%); }
+
+        /* Perbaikan Keyframe Animasi */
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.7; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .logs {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            max-height: 400px; /* Dibuat sedikit lebih tinggi */
+            overflow-y: auto;
+            /* Dibuat agar mengisi 3 kolom */
+            grid-column: 1 / -1; 
+        }
+
+        .logs h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 8px;
+        }
+
+        .log-entry {
+            padding: 8px 12px;
+            margin-bottom: 8px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            font-size: 0.9rem;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .log-time {
+            color: #666;
+            font-size: 0.9rem;
+            font-weight: 500;
+            white-space: nowrap;
+            margin-right: 15px;
+        }
+
+        .log-message {
+            font-weight: 600;
+        }
+
+        .alert {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 DASHBOARD ROBOT PEMADAM API</h1>
+            <p>Monitoring Real-time Sistem Pemadam Api Otomatis</p>
+        </div>
+
+        <div class="alert">
+            <strong>Status:</strong> Dashboard ini menjalankan **simulasi** data robot. Data diperbarui setiap 2 detik.
+        </div>
+
+        <div class="dashboard">
+            <div class="card">
+                <h3>📊 STATUS SISTEM</h3>
+                <div class="status-item">
+                    <span class="status-label">Mode Operasi</span>
+                    <span id="modeOperasi" class="status-value status-siaga">SIAGA</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Arah Api Terdeteksi</span>
+                    <span id="arahApi" class="status-value status-off">TIDAK ADA</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Pompa Air</span>
+                    <span id="pompaStatus" class="status-value status-off">OFF</span>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>🤖 KONTROL LENGAN ROBOT</h3>
+                <div class="status-item">
+                    <span class="status-label">Base Angle (Menoleh)</span>
+                    <span id="baseAngle" class="status-value status-netral">90°</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Shoulder Angle (Bahu)</span>
+                    <span id="shoulderAngle" class="status-value status-netral">100°</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Elbow Angle (Siku)</span>
+                    <span id="elbowAngle" class="status-value status-netral">0°</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Wrist Angle (Pergelangan)</span>
+                    <span id="wristAngle" class="status-value status-netral">0°</span>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>🔥 DATA SENSOR</h3>
+                <div class="status-item">
+                    <span class="status-label">Sensor Kiri (D6)</span>
+                    <span id="sensorKiri" class="status-value status-off">AMAN</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Sensor Kanan (D7)</span>
+                    <span id="sensorKanan" class="status-value status-off">AMAN</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Sensor Tengah (A0)</span>
+                    <span id="sensorTengah" class="status-value status-off">AMAN</span>
+                </div>
+                 <div class="status-item">
+                    <span class="status-label">Intensitas Api (A0)</span>
+                    <span id="intensitasApi" class="status-value status-netral">0</span>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>📈 GRAFIK INTENSITAS API (SENSOR TENGAH)</h3>
+                <canvas id="apiChart"></canvas>
+            </div>
+
+            <div class="card">
+                <h3>🎯 VISUALISASI ARAH API</h3>
+                <div class="sensor-visual">
+                    <div class="robot-arm">
+                        <div class="direction-indicator direction-tengah" id="indicatorTengah" style="display: none;">TENGAH</div>
+                        <div class="direction-indicator direction-kiri" id="indicatorKiri" style="display: none;">KIRI</div>
+                        <div class="direction-indicator direction-kanan" id="indicatorKanan" style="display: none;">KANAN</div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 3rem;">🤖</div>
+                            <div style="font-size: 0.8rem; color: #666; margin-top: 5px;">ROBOT</div>
+                        </div>
+                    </div>
+                    <div id="visualStatus" style="font-weight: 600; font-size: 1.1rem; color: #333;">Tidak ada api terdeteksi</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="logs">
+            <h3>📝 LOG AKTIVITAS</h3>
+            <div id="logContainer">
+                </div>
+        </div>
+    </div>
+
+<script>
+    // =======================================================
+    // --- KODE JAVASCRIPT BARU UNTUK KONEKSI POLLING ---
+    // =======================================================
+
+    var lastStatus = "SIAGA";
+    const batasBawah = 150; 
+    
+    // Alamat skrip PHP Anda untuk mengambil data
+    const getDataUrl = "get-status.php"; // Ini sudah benar
+
+    // --- INISIALISASI GRAFIK (CHART.JS) ---
+    const ctx = document.getElementById('apiChart').getContext('2d');
+    const apiChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [], 
+            datasets: [{
+                label: 'Intensitas Api (A0)',
+                data: [], 
+                borderColor: '#f44336',
+                backgroundColor: 'rgba(244, 67, 54, 0.1)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: { beginAtZero: true, max: 1024 },
+                x: { display: false }
+            },
+            animation: { duration: 250 }
+        }
+    });
+
+    // --- FUNGSI UNTUK MEMPERBARUI TAMPILAN (UI) ---
+    function updateDashboardUI(data) { 
+        // 1. Perbarui Status Sistem
+        const modeEl = document.getElementById('modeOperasi');
+        modeEl.innerText = data.modeOperasi;
+        modeEl.className = 'status-value';
+        if (data.modeOperasi.includes("PADAMKAN")) modeEl.classList.add('status-padamkan');
+        else if (data.modeOperasi === "MENCARI") modeEl.classList.add('status-mencari');
+        else modeEl.classList.add('status-siaga');
+
+        const arahEl = document.getElementById('arahApi');
+        arahEl.innerText = data.arahApi;
+        arahEl.className = 'status-value';
+        if (data.arahApi === "TIDAK ADA") arahEl.classList.add('status-off');
+        else arahEl.classList.add('status-on');
+
+        const pompaEl = document.getElementById('pompaStatus');
+        pompaEl.innerText = data.pompaStatus;
+        pompaEl.className = 'status-value';
+        pompaEl.classList.add(data.pompaStatus === "ON" ? 'status-on' : 'status-off');
+
+        // 2. Perbarui Status Lengan Robot
+        document.getElementById('baseAngle').innerText = data.baseAngle + '°';
+        document.getElementById('shoulderAngle').innerText = data.shoulderAngle + '°';
+        document.getElementById('elbowAngle').innerText = data.elbowAngle + '°';
+        document.getElementById('wristAngle').innerText = data.wristAngle + '°';
+
+        // 3. Perbarui Data Sensor
+        document.getElementById('intensitasApi').innerText = data.sensorTengahAnalog;
+        
+        const sensorKiriEl = document.getElementById('sensorKiri');
+        sensorKiriEl.innerText = data.sensorKiri == 1 ? 'API TERDETEKSI' : 'AMAN';
+        sensorKiriEl.className = 'status-value';
+        sensorKiriEl.classList.add(data.sensorKiri == 1 ? 'status-on' : 'status-off');
+
+        const sensorKananEl = document.getElementById('sensorKanan');
+        sensorKananEl.innerText = data.sensorKanan == 1 ? 'API TERDETEKSI' : 'AMAN';
+        sensorKananEl.className = 'status-value';
+        sensorKananEl.classList.add(data.sensorKanan == 1 ? 'status-on' : 'status-off');
+
+        const sensorTengahEl = document.getElementById('sensorTengah');
+        let tengahStatus = data.sensorTengahAnalog > batasBawah;
+        sensorTengahEl.innerText = tengahStatus ? 'API TERDETEKSI' : 'AMAN';
+        sensorTengahEl.className = 'status-value';
+        sensorTengahEl.classList.add(tengahStatus ? 'status-on' : 'status-off');
+
+        // 4. Perbarui Visualisasi Arah
+        document.getElementById('indicatorKiri').style.display = data.arahApi === 'KIRI' ? 'flex' : 'none';
+        document.getElementById('indicatorKanan').style.display = data.arahApi === 'KANAN' ? 'flex' : 'none';
+        document.getElementById('indicatorTengah').style.display = data.arahApi === 'TENGAH' ? 'flex' : 'none';
+        
+        let visualMsg = "Tidak ada api terdeteksi";
+        if (data.arahApi !== "TIDAK ADA") {
+            visualMsg = `Api terdeteksi di ${data.arahApi}!`;
+        }
+        document.getElementById('visualStatus').innerText = visualMsg;
+
+        // 5. Perbarui Grafik
+        updateChart(data.sensorTengahAnalog);
+    }
+    
+    // --- FUNGSI UNTUK MEMPERBARUI GRAFIK ---
+    function updateChart(apiValue) {
+        const now = new Date().toLocaleTimeString();
+        apiChart.data.labels.push(now);
+        apiChart.data.datasets[0].data.push(apiValue);
+
+        const maxDataPoints = 20;
+        if (apiChart.data.labels.length > maxDataPoints) {
+            apiChart.data.labels.shift();
+            apiChart.data.datasets[0].data.shift();
+        }
+        apiChart.update();
+    }
+
+    // --- FUNGSI UNTUK MENAMBAHKAN LOG ---
+    function addLogEntry(message) {
+        const logContainer = document.getElementById('logContainer');
+        const now = new Date().toLocaleTimeString('id-ID');
+        
+        const logEntry = document.createElement('div');
+        logEntry.className = 'log-entry';
+        
+        const logTime = document.createElement('span');
+        logTime.className = 'log-time';
+        logTime.innerText = `[${now}]`;
+        
+        const logMessage = document.createElement('span');
+        logMessage.className = 'log-message';
+        logMessage.innerText = message;
+        
+        logEntry.appendChild(logTime);
+        logEntry.appendChild(logMessage);
+        
+        logContainer.prepend(logEntry);
+    }
+
+    // --- FUNGSI UTAMA BARU: POLLING ---
+    async function fetchData() {
+        const alertBox = document.getElementById('connection-alert');
+        try {
+            // Tambahkan cache-busting query
+            const response = await fetch(getDataUrl + '?t=' + new Date().getTime());
+            if (!response.ok) {
+                throw new Error("Gagal mengambil data dari server");
+            }
+            const data = await response.json();
+            
+            // Panggil fungsi update UI
+            updateDashboardUI(data);
+
+            // Update Log jika status berubah
+            if (data.modeOperasi !== lastStatus) {
+                addLogEntry(data.modeOperasi);
+                lastStatus = data.modeOperasi;
+            }
+            
+            // Update status koneksi
+            alertBox.innerHTML = '<strong>Status:</strong> Terhubung. Menerima data real-time.';
+            alertBox.style.background = '#d4edda'; // Hijau
+
+        } catch (error) {
+            console.error(error);
+            alertBox.innerHTML = '<strong>Status:</strong> Gagal terhubung ke server PHP.';
+            alertBox.style.background = '#f8d7da'; // Merah
+        }
+    }
+
+    // --- MULAI POLLING SAAT HALAMAN DIMUAT ---
+    window.addEventListener('load', () => {
+        addLogEntry("Sistem Dashboard Dimuat.");
+        fetchData(); // Panggil sekali saat dimuat
+        setInterval(fetchData, 2000); // Panggil setiap 2 detik
+    });
+
+</script>
+</body>
+</html>
