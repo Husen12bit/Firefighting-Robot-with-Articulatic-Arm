@@ -1,7 +1,7 @@
 <?php
 $servername = "localhost";
-$username = "root"; // Ganti jika beda
-$password = ""; // Ganti jika beda
+$username = "root"; 
+$password = "";
 $dbname = "db_robot";
 
 // Buat koneksi
@@ -11,4 +11,5 @@ $conn = new mysqli($servername, $username, $password, $dbname);
 if ($conn->connect_error) {
   die("Koneksi gagal: " . $conn->connect_error);
 }
+
 ?>
